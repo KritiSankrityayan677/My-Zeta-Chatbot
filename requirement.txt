@@ -1,0 +1,9 @@
+langchain==0.3.7
+langchain-google-genai==1.0.3
+google-generativeai==0.5.4
+chromadb==1.2.2
+python-dotenv==1.0.1
+transformers
+torch
+sentence-transformers ==2.2.2
+streamlit==1.50.0
