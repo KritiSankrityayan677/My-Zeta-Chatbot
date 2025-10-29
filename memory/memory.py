@@ -1,41 +1,60 @@
-# memory/storage.py
-from typing import List, Optional
+# memory/memory.py — FINAL (Persistent + STAN Safe)
+import os
+from typing import List
+from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores import Chroma
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_DIR = os.path.join(os.getcwd(), "data", "chroma")
+DATA_DIR = os.path.join(os.getcwd(), "chroma_memory")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Create embeddings once
 def get_embeddings():
-    # choose a local HF model that you installed; or use a lightweight one
+    """Return semantic embeddings for memory."""
     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-def get_chroma_collection(collection_name: str = "zeta_memories"):
-    embeddings = get_embeddings()
-    # Persistent Chroma using default local persistence implementation in langchain
-    return Chroma(persist_directory=DATA_DIR, embedding_function=embeddings, collection_name=collection_name)
+def get_user_chroma_collection(user_name: str):
+    """Each user gets a private, persistent Chroma namespace."""
+    safe = f"user_{(user_name or 'anonymous').lower().replace(' ', '_')}"
+    user_dir = os.path.join(DATA_DIR, safe)
+    os.makedirs(user_dir, exist_ok=True)
+    return Chroma(
+        persist_directory=user_dir,
+        embedding_function=get_embeddings(),
+        collection_name=safe
+    )
 
-# store memory chunk (only when it is a 'fact' or important)
-def store_memory_chunk(text: str, metadata: dict = None, collection_name: str = "zeta_memories"):
-    col = get_chroma_collection(collection_name)
-    col.add_texts([text], metadatas=[metadata or {}], ids=None)
-    col.persist()
+def store_memory_chunk(user_name: str, text: str, metadata: dict = None):
+    """Store a fact persistently (survives app close)."""
+    col = get_user_chroma_collection(user_name)
+    try:
+        col.add_texts([text], metadatas=[metadata or {}])
+        col.persist()
+    except Exception as e:
+        print(f"[⚠️ Memory store failed for {user_name}: {e}]")
 
-# recall top-k memory chunks relevant to query
-def recall(query: str, k: int = 3, collection_name: str = "zeta_memories") -> List[str]:
-    col = get_chroma_collection(collection_name)
-    if col._collection.count() == 0:
+def recall(user_name: str, query: str, k: int = 3) -> List[str]:
+    """Recall user facts using semantic + fallback keyword recall."""
+    col = get_user_chroma_collection(user_name)
+    try:
+        if hasattr(col, "_collection") and col._collection.count() == 0:
+            return []
+    except Exception:
         return []
-    results = col.similarity_search(query, k=k)
-    return [r.page_content for r in results]
-
-# optional: list all memory (debug)
-def list_all(collection_name: str = "zeta_memories"):
-    col = get_chroma_collection(collection_name)
-    docs = col.get()
-    return docs
+    try:
+        results = col.similarity_search(query, k=k)
+    except Exception:
+        results = []
+    # fallback: keyword-based
+    try:
+        all_docs = col.get()
+        docs = all_docs.get("documents", [])
+        keywords = ["name", "live", "city", "from", "favorite", "like", "love"]
+        fallback = [d for d in docs if any(k in d.lower() for k in keywords)]
+        for f in fallback:
+            if f not in [r.page_content for r in results]:
+                results.append(type("Doc", (), {"page_content": f}))
+    except Exception:
+        pass
+    return [r.page_content for r in results][:k]

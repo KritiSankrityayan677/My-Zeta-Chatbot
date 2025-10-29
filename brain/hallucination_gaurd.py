@@ -1,13 +1,18 @@
-# brain/hallucination_guard.py
+# brain/hallucination_gaurd.py
 def grounded_response(user_input: str) -> str | None:
-    """
-    If the user asks for private facts or impossible things, refuse gracefully.
-    Return a safe reply string or None.
-    """
+    """Refuses impossible or private user queries safely."""
     lower = user_input.lower()
-    # examples of impossible claims
-    if "did you see me yesterday" in lower or "where were you yesterday" in lower:
-        return "I don't have the ability to observe real-world events or recall them unless you told me about them here. I can remember what you tell me in this chat though."
-    if "what do i look like" in lower or "show me a picture" in lower:
-        return "I can't see you or show pictures, but I can describe typical features or style suggestions if you tell me more."
+    impossible = [
+        "did you see me", "where were you", "can you see me",
+        "did you meet me", "what do i look like", "show me my picture",
+        "what color is my hair", "track me", "can you hear me"
+    ]
+    if any(q in lower for q in impossible):
+        return (
+            "I don’t have real-world perception like sight or hearing, "
+            "so I can’t see or recall real events. "
+            "But I remember everything you tell me here 💬"
+        )
     return None
+
+
