@@ -14,6 +14,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "user_profile" not in st.session_state:
+    # do NOT force a name - remember only when user tells it explicitly
     st.session_state.user_profile = {"bot_name": "Zeta", "user_id": "local_user", "name": None}
 
 # ------------------------------
@@ -22,12 +23,14 @@ if "user_profile" not in st.session_state:
 st.title("💫 Zeta — Your Context-Aware & Memory-Enabled Chatbot")
 st.caption("Built with Gemini 2.0 Flash + LangChain + ChromaDB")
 
+st.markdown("### 💭 Chat")
 user_input = st.chat_input("Type something...")
 
 if user_input:
     st.session_state.chat_history.append(("You", user_input))
 
     with st.spinner("Zeta is thinking..."):
+        # pass the user profile dict so name/memory updates inside utils can modify it
         response = chat_with_zeta(user_input, st.session_state.user_profile)
 
     st.session_state.chat_history.append(("Zeta", response))
@@ -73,4 +76,3 @@ with st.sidebar:
     - ❤️ Adapts tone & empathy  
     - 🌈 Keeps consistent, human-like personality  
     """)
-

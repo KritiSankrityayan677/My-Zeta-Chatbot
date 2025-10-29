@@ -1,23 +1,15 @@
-# brain/personality.py
+# brain/brain.py
 import random
 
 def maintain_identity(user_input: str, user_profile: dict) -> str | None:
-    """
-    If user asks identity/probing questions, reply consistently using user_profile (e.g., name, bot_name).
-    Return a short reply string if handled, otherwise None.
-    """
-    lowered = user_input.lower()
-    if "what is your name" in lowered or "who are you" in lowered or "are you a bot" in lowered:
+    lowered = (user_input or "").lower()
+    if any(q in lowered for q in ["what is your name", "who are you", "are you a bot"]):
         bot_name = user_profile.get("bot_name", "Zeta")
-        # keep it in-character and avoid "I'm an AI" phrasing if you want persona-consistency:
         return f"My name is {bot_name}. I'm here to help and chat with you."
     return None
 
 def adapt_tone(user_input: str) -> dict:
-    """
-    Detect tone triggers and return dict of adjustments. Keep simple: detect 'sad','angry','joke','roast' etc.
-    """
-    lower = user_input.lower()
+    lower = (user_input or "").lower()
     if any(w in lower for w in ["i'm feeling down", "i feel sad", "i'm depressed", "i'm upset"]):
         return {"tone": "empathetic"}
     if any(w in lower for w in ["roast", "let's roast", "insult"]):
@@ -25,7 +17,6 @@ def adapt_tone(user_input: str) -> dict:
     return {"tone": "neutral"}
 
 def natural_response(text: str, tone: str = "neutral") -> str:
-    """Small postprocessor to adapt phrasing and add emojis sparingly."""
     if tone == "empathetic":
         return text + " 💗 I'm listening — tell me more if you want."
     if tone == "playful_roast":
